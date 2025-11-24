@@ -23,6 +23,7 @@ endif()
 
 set(SOURCES
   src/main.cpp
+  src/VmaUsage.cpp
   src/Renderer.cpp
   vendored/imgui/imgui.cpp
   vendored/imgui/imgui_demo.cpp
@@ -35,10 +36,11 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/vendored/imgui
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan SDL3::SDL3)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS} Vulkan::Vulkan SDL3::SDL3 vk-bootstrap::vk-bootstrap GPUOpen::VulkanMemoryAllocator glm::glm)
