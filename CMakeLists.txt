@@ -9,8 +9,36 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
+find_package(Vulkan REQUIRED)
+add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/vk-bootstrap EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/vma EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/glm EXCLUDE_FROM_ALL)
+
+if (MSVC)
+    add_compile_options(/W4 /permissive-)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
 set(SOURCES
   src/main.cpp
+  src/Renderer.cpp
+  vendored/imgui/imgui.cpp
+  vendored/imgui/imgui_demo.cpp
+  vendored/imgui/imgui_draw.cpp
+  vendored/imgui/imgui_tables.cpp
+  vendored/imgui/imgui_widgets.cpp
+  vendored/imgui/backends/imgui_impl_sdl3.cpp
+  vendored/imgui/backends/imgui_impl_vulkan.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/vendored/imgui
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan SDL3::SDL3)

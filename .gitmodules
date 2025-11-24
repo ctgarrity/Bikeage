@@ -1,0 +1,18 @@
+[submodule "vendored/sdl"]
+	path = vendored/sdl
+	url = git@github.com:libsdl-org/SDL.git
+[submodule "vendored/vk-bootstrap"]
+	path = vendored/vk-bootstrap
+	url = git@github.com:charles-lunarg/vk-bootstrap.git
+[submodule "vendored/vma"]
+	path = vendored/vma
+	url = git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "vendored/glm"]
+	path = vendored/glm
+	url = git@github.com:g-truc/glm.git
+[submodule "vendored/fastgltf"]
+	path = vendored/fastgltf
+	url = git@github.com:spnda/fastgltf.git
+[submodule "vendored/imgui"]
+	path = vendored/imgui
+	url = git@github.com:ocornut/imgui.git
