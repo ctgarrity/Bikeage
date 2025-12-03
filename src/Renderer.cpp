@@ -551,7 +551,7 @@ void Renderer::init_triangle_pipeline()
     pipelineBuilder.set_multisampling_none();
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_depth_test(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
-    // pipelineBuilder.disable_depth_test();
+    //pipelineBuilder.disable_depth_test();
     pipelineBuilder.set_color_attachment_format(m_swapchain_data.draw_image.image_format);
     pipelineBuilder.set_depth_format(m_swapchain_data.depth_image.image_format);
     m_triangle_pipeline = pipelineBuilder.build_pipeline(m_device);
@@ -572,7 +572,10 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
     VkRenderingAttachmentInfo color_attachment = init::color_attachment_info(
         m_swapchain_data.draw_image.image_view, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo render_info = init::rendering_info(m_swapchain_data.draw_extent_2D, &color_attachment, nullptr);
+    VkRenderingAttachmentInfo depth_attachment = init::depth_attachment_info(
+    m_swapchain_data.depth_image.image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    VkRenderingInfo render_info = init::rendering_info(m_swapchain_data.draw_extent_2D, &color_attachment, &depth_attachment);
     vkCmdBeginRendering(cmd, &render_info);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_triangle_pipeline);
