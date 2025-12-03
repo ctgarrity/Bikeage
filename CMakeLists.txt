@@ -25,6 +25,8 @@ set(SOURCES
   src/main.cpp
   src/VmaUsage.cpp
   src/Renderer.cpp
+  src/Initializers.cpp
+  src/Utilities.cpp
   vendored/imgui/imgui.cpp
   vendored/imgui/imgui_demo.cpp
   vendored/imgui/imgui_draw.cpp
@@ -37,6 +39,8 @@ set(SOURCES
 set(HEADERS
     include/Renderer.h
     include/Types.h
+    include/Initializers.h
+    include/Utilities.h
 )
 
 add_executable(${PROJECT_NAME} 

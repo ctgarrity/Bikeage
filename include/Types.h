@@ -59,3 +59,21 @@ public:
     void push_function(std::function<void()>&& func);
     void flush();
 };
+
+struct FrameData
+{
+private:
+    DeletionQueue deletion_queue;
+
+public:
+    VkCommandPool command_pool;
+    VkCommandBuffer command_buffer;
+
+    VkSemaphore acquire_semaphore;
+    VkFence render_fence;
+
+    void flush_frame_data()
+    {
+        deletion_queue.flush();
+    }
+};

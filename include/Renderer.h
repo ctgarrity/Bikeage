@@ -12,6 +12,8 @@ public:
     void run();
 
 private:
+    static constexpr unsigned int FRAMES_IN_FLIGHT = 2;
+
     VmaAllocator m_vma_allocator;
     DeletionQueue m_deletion_queue;
 
@@ -23,6 +25,9 @@ private:
     vkb::Device m_device = {};
     SwapchainData m_swapchain_data;
     AllocatedImage m_draw_image;
+    std::array<FrameData, FRAMES_IN_FLIGHT> m_frame_data;
+    std::vector<VkSemaphore> m_submit_semaphores;
+    uint32_t m_frame_index = 0;
 
     void init_sdl();
     void create_instance();
@@ -37,4 +42,11 @@ private:
     void destroy_image();
     void init_imgui();
     void draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view);
+    void create_command_buffers();
+    void init_sync_structures();
+    void draw_frame();
+    FrameData& get_current_frame()
+    {
+        return m_frame_data[m_frame_index % FRAMES_IN_FLIGHT];
+    };
 };
