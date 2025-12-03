@@ -30,6 +30,14 @@ void Renderer::init()
 
 void Renderer::destroy()
 {
+    VK_CHECK(vkDeviceWaitIdle(m_device));
+    m_swapchain_data.swapchain.destroy_image_views(m_swapchain_data.swapchain_image_views);
+    vkb::destroy_swapchain(m_swapchain_data.swapchain);
+    // destroy_draw_image();
+    for (auto& frame : m_frame_data)
+    {
+        frame.flush_frame_data();
+    }
     m_deletion_queue.flush();
 }
 
@@ -145,16 +153,16 @@ void Renderer::init_imgui()
         });
 }
 
-// void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view)
-//{
-//     VkRenderingAttachmentInfo color_attachment =
-//         init::color_attachment_info(target_image_view, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-//     VkRenderingInfo render_info = init::rendering_info(m_init_data.swapchain.extent, &color_attachment, nullptr);
-//
-//     vkCmdBeginRendering(cmd, &render_info);
-//     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
-//     vkCmdEndRendering(cmd);
-// }
+void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view)
+{
+    VkRenderingAttachmentInfo color_attachment =
+        init::color_attachment_info(target_image_view, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkRenderingInfo render_info = init::rendering_info(m_swapchain_data.swapchain.extent, &color_attachment, nullptr);
+
+    vkCmdBeginRendering(cmd, &render_info);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+    vkCmdEndRendering(cmd);
+}
 
 void Renderer::init_sdl()
 {
