@@ -35,4 +35,6 @@ private:
     void destroy_buffer();
     void create_image(AllocatedImage& image, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage);
     void destroy_image();
+    void init_imgui();
+    void draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view);
 };

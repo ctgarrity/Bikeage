@@ -1,11 +1,17 @@
 #include "Renderer.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_vulkan.h"
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_init.h"
 #include <algorithm>
 #include <ranges>
 #include <iostream>
 #include <print>
 #include <vulkan/vulkan_core.h>
+#include "imgui.h"
+#include "backends/imgui_impl_sdl3.h"
+#include "backends/imgui_impl_vulkan.h"
+
 
 void Renderer::init()
 {
@@ -16,6 +22,7 @@ void Renderer::init()
     create_device();
     create_swapchain();
     init_vma();
+    init_imgui();
 }
 
 void Renderer::destroy()
@@ -25,8 +32,128 @@ void Renderer::destroy()
 
 void Renderer::run()
 {
-    // Main draw loop
+    bool done = false;
+    while (!done)
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            if (event.type == SDL_EVENT_QUIT)
+                done = true;
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                event.window.windowID == SDL_GetWindowID(m_window))
+                done = true;
+            if (event.window.type == SDL_EVENT_WINDOW_RESIZED)
+            {
+                // Use pending resize flag and only set resize after mouse release
+                //m_render_data.resize_requested = true;
+            }
+            if (event.type == SDL_EVENT_MOUSE_MOTION)
+            {
+                //SDL_GetMouseState(&m_render_data.mos_pos_x, &m_render_data.mos_pos_y);
+            }
+        }
+
+        if (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED)
+        {
+            SDL_Delay(10);
+            continue;
+        }
+
+        /*if (m_render_data.resize_requested)
+        {
+            int width, height;
+            SDL_GetWindowSize(m_init_data.window, &width, &height);
+            m_init_data.window_extent.width = width;
+            m_init_data.window_extent.height = height;
+            recreate_swapchain();
+            m_render_data.resize_requested = false;
+        }*/
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
+        ImGui::NewFrame();
+
+        bool show_demo = true;
+        ImGui::ShowDemoWindow(&show_demo);
+
+        //if (ImGui::Begin("Push Constants"))
+        //{
+        //    ImGui::InputFloat("Time", (float*)&m_render_data.push_constants_data.time);
+        //    ImGui::ColorEdit3("Color 1", (float*)&m_render_data.push_constants_data.color1, ImGuiColorEditFlags_Float);
+        //    ImGui::ColorEdit3("Color 2", (float*)&m_render_data.push_constants_data.color2, ImGuiColorEditFlags_Float);
+        //    ImGui::InputFloat2("Cell Coords", (float*)&m_render_data.push_constants_data.cell_coords);
+        //}
+        //ImGui::End();
+        ImGui::Render();
+        //draw_frame();
+    }
 }
+
+void Renderer::init_imgui()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    ImGui_ImplSDL3_InitForVulkan(m_window);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_instance;
+    init_info.PhysicalDevice = m_physical_device;
+    init_info.Device = m_device;
+    init_info.QueueFamily = m_device.get_queue_index(vkb::QueueType::graphics).value();
+    init_info.Queue = m_device.get_queue(vkb::QueueType::graphics).value();
+    // init_info.PipelineCache = YOUR_PIPELINE_CACHE; // optional
+    // init_info.DescriptorPool = YOUR_DESCRIPTOR_POOL; // see below Todo: Check if the DescriptorPoolSize is correct
+    init_info.DescriptorPoolSize =
+        IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE; // (Optional) Set to create internal descriptor pool instead
+                                                           // of using DescriptorPool
+    init_info.PipelineInfoMain.Subpass = 0;
+    init_info.MinImageCount = (uint32_t)m_swapchain_data.swapchain_images.size();
+    init_info.ImageCount = (uint32_t)m_swapchain_data.swapchain_images.size();
+    init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.UseDynamicRendering = true;
+    // init_info.Allocator = YOUR_ALLOCATOR; // optional
+    // init_info.CheckVkResultFn = check_vk_result; // optional
+
+    VkPipelineRenderingCreateInfo pipeline_rendering_create_info = {};
+    pipeline_rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    pipeline_rendering_create_info.pNext = nullptr;
+    pipeline_rendering_create_info.colorAttachmentCount = 1;
+    pipeline_rendering_create_info.pColorAttachmentFormats = &m_swapchain_data.swapchain.image_format;
+
+    init_info.PipelineInfoMain.PipelineRenderingCreateInfo = pipeline_rendering_create_info;
+
+    ImGui_ImplVulkan_Init(&init_info);
+    // (this gets a bit more complicated, see example app for full reference)
+    // ImGui_ImplVulkan_CreateFontsTexture(get_current_frame().main_command_buffer);
+    // (your code submit a queue)
+    // ImGui_ImplVulkan_DestroyFontUploadObjects();
+    m_deletion_queue.push_function(
+        [&]()
+        {
+            ImGui_ImplVulkan_Shutdown();
+            ImGui_ImplSDL3_Shutdown();
+            ImGui::DestroyContext();
+        });
+
+    std::cout << "imgui initialized" << std::endl;
+}
+
+//void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view)
+//{
+//    VkRenderingAttachmentInfo color_attachment =
+//        init::color_attachment_info(target_image_view, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+//    VkRenderingInfo render_info = init::rendering_info(m_init_data.swapchain.extent, &color_attachment, nullptr);
+//
+//    vkCmdBeginRendering(cmd, &render_info);
+//    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+//    vkCmdEndRendering(cmd);
+//}
 
 void Renderer::init_sdl()
 {

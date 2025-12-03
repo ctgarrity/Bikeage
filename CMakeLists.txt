@@ -34,7 +34,15 @@ set(SOURCES
   vendored/imgui/backends/imgui_impl_vulkan.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+set(HEADERS
+    include/Renderer.h
+    include/Types.h
+)
+
+add_executable(${PROJECT_NAME} 
+	${SOURCES}
+	${HEADERS}
+)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_include_directories(${PROJECT_NAME}
