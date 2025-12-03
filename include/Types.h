@@ -2,6 +2,8 @@
 #include "VkBootstrap.h"
 #include "vulkan/vk_enum_string_helper.h"
 #include "vma/vk_mem_alloc.h"
+#include "glm/glm.hpp"
+
 #include <vector>
 #include <functional>
 #include <deque>
@@ -36,9 +38,12 @@ struct AllocatedBuffer
 struct SwapchainData
 {
     vkb::Swapchain swapchain;
+    VkExtent2D swapchain_extent_2D;
     std::vector<VkImage> swapchain_images;
     std::vector<VkImageView> swapchain_image_views;
     AllocatedImage draw_image;
+    VkExtent2D draw_extent_2D;
+    AllocatedImage depth_image;
     bool resize_requested = false;
 };
 
@@ -76,4 +81,13 @@ public:
     {
         deletion_queue.flush();
     }
+};
+
+struct Vertex
+{
+    glm::vec3 position;
+    float uv_x;
+    glm::vec3 normal;
+    float uv_y;
+    glm::vec4 color;
 };

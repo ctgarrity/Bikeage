@@ -3,6 +3,7 @@
 #include "SDL3/SDL.h"
 #include "VkBootstrap.h"
 #include "vma/vk_mem_alloc.h"
+#include <vulkan/vulkan_core.h>
 
 class Renderer
 {
@@ -24,10 +25,13 @@ private:
     vkb::PhysicalDevice m_physical_device = {};
     vkb::Device m_device = {};
     SwapchainData m_swapchain_data;
-    AllocatedImage m_draw_image;
+
     std::array<FrameData, FRAMES_IN_FLIGHT> m_frame_data;
     std::vector<VkSemaphore> m_submit_semaphores;
     uint32_t m_frame_index = 0;
+
+    VkPipeline m_triangle_pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout m_triangle_pipeline_layout = VK_NULL_HANDLE;
 
     void init_sdl();
     void create_instance();
@@ -35,15 +39,20 @@ private:
     void pick_physical_device();
     void create_device();
     void create_swapchain();
+    void recreate_swapchain();
     void init_vma();
     void create_buffer();
     void destroy_buffer();
-    void create_image(AllocatedImage& image, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage);
-    void destroy_image();
+    void create_draw_image();
+    void create_depth_image();
+    void destroy_image(AllocatedImage& img);
     void init_imgui();
     void draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view);
     void create_command_buffers();
     void init_sync_structures();
+    // void init_descriptors();
+    void init_triangle_pipeline();
+    void draw_triangle(VkCommandBuffer cmd);
     void draw_frame();
     FrameData& get_current_frame()
     {

@@ -27,6 +27,7 @@ set(SOURCES
   src/Renderer.cpp
   src/Initializers.cpp
   src/Utilities.cpp
+  src/PipelineBuilder.cpp
   vendored/imgui/imgui.cpp
   vendored/imgui/imgui_demo.cpp
   vendored/imgui/imgui_draw.cpp
@@ -41,6 +42,7 @@ set(HEADERS
     include/Types.h
     include/Initializers.h
     include/Utilities.h
+    include/PipelineBuilder.h
 )
 
 add_executable(${PROJECT_NAME} 
