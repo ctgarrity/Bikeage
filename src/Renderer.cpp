@@ -201,9 +201,49 @@ void Renderer::destroy_buffer()
     // Init
 }
 
-void Renderer::create_image()
+void Renderer::create_image(AllocatedImage& image, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage)
 {
-    // Init
+    VkExtent3D draw_image_extent = { extent.width, extent.height, 1 };
+    image.image_extent = draw_image_extent;
+    image.image_format = format;
+
+    // VkImageUsageFlags image_usage = {};
+    // image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    // image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // image_usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    // image_usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    VkImageCreateInfo image_info = {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.pNext = nullptr;
+    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.format = m_draw_image.image_format;
+    image_info.extent = m_draw_image.image_extent;
+    image_info.usage = usage;
+    image_info.arrayLayers = 1;
+    image_info.mipLevels = 1;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
+    alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    VK_CHECK(vmaCreateImage(m_vma_allocator, &image_info, &alloc_info, &image.image, &image.allocation, nullptr));
+
+    VkImageViewCreateInfo image_view_info = {};
+    image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    image_view_info.pNext = nullptr;
+    image_view_info.image = image.image;
+    image_view_info.format = image.image_format;
+    image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    image_view_info.subresourceRange.baseMipLevel = 0;
+    image_view_info.subresourceRange.levelCount = 1;
+    image_view_info.subresourceRange.baseArrayLayer = 0;
+    image_view_info.subresourceRange.layerCount = 1;
+    image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    VK_CHECK(vkCreateImageView(m_device, &image_view_info, nullptr, &image.image_view));
 }
 
 void Renderer::destroy_image()
@@ -211,12 +251,12 @@ void Renderer::destroy_image()
     // Init
 }
 
-void Renderer::DeletionQueue::push_function(std::function<void()>&& func)
+void DeletionQueue::push_function(std::function<void()>&& func)
 {
     deletion_queue.push_back(std::move(func));
 }
 
-void Renderer::DeletionQueue::flush()
+void DeletionQueue::flush()
 {
     for (auto& func : std::views::reverse(deletion_queue))
     {
