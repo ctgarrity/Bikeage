@@ -344,7 +344,9 @@ void Renderer::destroy_buffer()
 
 void Renderer::create_draw_image()
 {
-    VkExtent3D draw_image_extent = { m_window_extent.width, m_window_extent.height, 1 };
+    VkExtent3D draw_image_extent = { m_swapchain_data.swapchain_extent_2D.width,
+                                     m_swapchain_data.swapchain_extent_2D.height,
+                                     1 };
 
     m_swapchain_data.draw_image.image_format = VK_FORMAT_R16G16B16A16_SFLOAT;
     m_swapchain_data.draw_image.image_extent = draw_image_extent;
@@ -354,6 +356,8 @@ void Renderer::create_draw_image()
     draw_image_usages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     draw_image_usages |= VK_IMAGE_USAGE_STORAGE_BIT;
     draw_image_usages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    m_swapchain_data.draw_extent_2D = m_swapchain_data.swapchain_extent_2D;
 
     VkImageCreateInfo render_img_info =
         init::image_create_info(m_swapchain_data.draw_image.image_format, draw_image_usages, draw_image_extent);
@@ -568,9 +572,7 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
     VkRenderingAttachmentInfo color_attachment = init::color_attachment_info(
         m_swapchain_data.draw_image.image_view, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkExtent2D draw_extent = { m_swapchain_data.draw_image.image_extent.width,
-                               m_swapchain_data.draw_image.image_extent.height };
-    VkRenderingInfo render_info = init::rendering_info(draw_extent, &color_attachment, nullptr);
+    VkRenderingInfo render_info = init::rendering_info(m_swapchain_data.draw_extent_2D, &color_attachment, nullptr);
     vkCmdBeginRendering(cmd, &render_info);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_triangle_pipeline);
