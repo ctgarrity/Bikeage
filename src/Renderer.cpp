@@ -7,6 +7,8 @@
 #include <ranges>
 #include <iostream>
 #include <print>
+#include <random>
+
 #include <vulkan/vulkan_core.h>
 #include "Types.h"
 #include "VkBootstrap.h"
@@ -733,6 +735,7 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
 
     // m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
     m_rectangle_push_constants.vertex_buffer = m_rectangle.vertex_buffer_address;
+    m_rectangle_push_constants.transform_buffer = m_rectangle.instance_transform_buffer_address;
     glm::mat4 view = glm::translate(glm::vec3{ 0, 0, -5 });
     // camera projection
     glm::mat4 projection =
@@ -754,7 +757,8 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
                        &m_rectangle_push_constants);
 
     // vkCmdDraw(cmd, 3, 1, 0, 0);
-    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, 6, 10, 0, 0, 0);
+    // vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 }
@@ -869,11 +873,14 @@ void Renderer::draw_frame()
     m_frame_index++;
 }
 
-GPUMeshBuffers Renderer::gpu_mesh_upload(std::span<uint32_t> indices, std::span<Vertex> vertices)
+GPUMeshBuffers Renderer::gpu_mesh_upload(std::span<uint32_t> indices,
+                                         std::span<Vertex> vertices,
+                                         std::span<glm::mat4> instance_transforms)
 {
     // Todo: Put this on a background thread?
     const size_t vertex_buffer_size = vertices.size() * sizeof(Vertex);
     const size_t index_buffer_size = indices.size() * sizeof(uint32_t);
+    const size_t instance_transform_buffer_size = instance_transforms.size() * sizeof(glm::mat4);
 
     GPUMeshBuffers new_surface;
     new_surface.vertex_buffer = create_buffer(vertex_buffer_size,
@@ -881,21 +888,36 @@ GPUMeshBuffers Renderer::gpu_mesh_upload(std::span<uint32_t> indices, std::span<
                                                   VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                               VMA_MEMORY_USAGE_AUTO);
 
-    VkBufferDeviceAddressInfo device_adress_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                                                     .buffer = new_surface.vertex_buffer.buffer };
-    new_surface.vertex_buffer_address = vkGetBufferDeviceAddress(m_device, &device_adress_info);
+    VkBufferDeviceAddressInfo vertex_device_adress_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                                                            .buffer = new_surface.vertex_buffer.buffer };
+    new_surface.vertex_buffer_address = vkGetBufferDeviceAddress(m_device, &vertex_device_adress_info);
+
     new_surface.index_buffer = create_buffer(
         index_buffer_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_AUTO);
 
-    AllocatedBuffer staging =
-        create_buffer(vertex_buffer_size + index_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
+    new_surface.instance_transform_buffer =
+        create_buffer(instance_transform_buffer_size,
+                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                          VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                      VMA_MEMORY_USAGE_AUTO);
+    VkBufferDeviceAddressInfo transform_device_adress_info = { .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                                                               .buffer = new_surface.instance_transform_buffer.buffer };
+    new_surface.instance_transform_buffer_address = vkGetBufferDeviceAddress(m_device, &transform_device_adress_info);
+
+    AllocatedBuffer staging = create_buffer(vertex_buffer_size + index_buffer_size + instance_transform_buffer_size,
+                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                            VMA_MEMORY_USAGE_AUTO);
     void* data = staging.info.pMappedData; // had to change this from vkguides
                                            // staging.alloction.GetMappedData()
     memcpy(data, vertices.data(), vertex_buffer_size);
     memcpy((char*)data + vertex_buffer_size, indices.data(), index_buffer_size);
+    memcpy((char*)data + vertex_buffer_size + index_buffer_size,
+           instance_transforms.data(),
+           instance_transform_buffer_size);
 
     immediate_submit(
-        [vertex_buffer_size, index_buffer_size, staging, new_surface](VkCommandBuffer cmd)
+        [vertex_buffer_size, index_buffer_size, instance_transform_buffer_size, staging, new_surface](
+            VkCommandBuffer cmd)
         {
             VkBufferCopy vertex_copy = {};
             vertex_copy.dstOffset = 0;
@@ -908,6 +930,12 @@ GPUMeshBuffers Renderer::gpu_mesh_upload(std::span<uint32_t> indices, std::span<
             index_copy.srcOffset = vertex_buffer_size;
             index_copy.size = index_buffer_size;
             vkCmdCopyBuffer(cmd, staging.buffer, new_surface.index_buffer.buffer, 1, &index_copy);
+
+            VkBufferCopy transform_copy = {};
+            index_copy.dstOffset = 0;
+            index_copy.srcOffset = vertex_buffer_size + index_buffer_size;
+            index_copy.size = instance_transform_buffer_size;
+            vkCmdCopyBuffer(cmd, staging.buffer, new_surface.instance_transform_buffer.buffer, 1, &transform_copy);
         });
 
     destroy_buffer(staging);
@@ -955,13 +983,30 @@ void Renderer::init_default_data()
     rect_indices[4] = 1;
     rect_indices[5] = 3;
 
-    m_rectangle = gpu_mesh_upload(rect_indices, rect_vertices);
+    std::array<glm::mat4, 10> instance_transforms;
+
+    // From ChatGPT
+    // Random number generator
+    std::mt19937 rng{ std::random_device{}() };
+
+    // Example: random positions in range [-10, 10]
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    for (glm::mat4& m : instance_transforms)
+    {
+        glm::vec3 pos(dist(rng), dist(rng), dist(rng));
+
+        m = glm::translate(glm::mat4(1.0f), pos);
+    }
+
+    m_rectangle = gpu_mesh_upload(rect_indices, rect_vertices, instance_transforms);
 
     m_deletion_queue.push_function(
         [this]()
         {
             destroy_buffer(m_rectangle.index_buffer);
             destroy_buffer(m_rectangle.vertex_buffer);
+            destroy_buffer(m_rectangle.instance_transform_buffer);
         });
 
     // Compute Push Constants

@@ -76,7 +76,9 @@ private:
     void draw_background(VkCommandBuffer cmd);
     void draw_frame();
 
-    GPUMeshBuffers gpu_mesh_upload(std::span<uint32_t> indices, std::span<Vertex> vertices);
+    GPUMeshBuffers gpu_mesh_upload(std::span<uint32_t> indices,
+                                   std::span<Vertex> vertices,
+                                   std::span<glm::mat4> instance_transforms);
     void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
     void init_default_data();
     FrameData& get_current_frame()

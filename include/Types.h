@@ -96,6 +96,7 @@ struct GPUDrawPushConstants
 {
     glm::mat4 world_matrix;
     VkDeviceAddress vertex_buffer;
+    VkDeviceAddress transform_buffer;
 };
 
 struct ComputePushConstants
@@ -110,7 +111,9 @@ struct GPUMeshBuffers
 {
     AllocatedBuffer index_buffer;
     AllocatedBuffer vertex_buffer;
+    AllocatedBuffer instance_transform_buffer;
     VkDeviceAddress vertex_buffer_address;
+    VkDeviceAddress instance_transform_buffer_address;
 };
 
 struct MousePos

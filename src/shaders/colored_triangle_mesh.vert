@@ -16,22 +16,29 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
   Vertex vertices[];
 };
 
+layout(buffer_reference, std430) readonly buffer InstanceTransformBuffer {
+  mat4 transforms[];
+};
+
 //push constants block
 layout(push_constant) uniform constants
 {
   mat4 render_matrix;
   VertexBuffer vertexBuffer;
+  InstanceTransformBuffer transformBuffer;
 } PushConstants;
 
 void main()
 {
-  //load vertex data from device adress
+  // Load vertex data from device adress
   Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
 
-  //mat4 InstanceTransform = PushConstants.instance_transform[gl_InstanceIndex];
-  //output data
-  gl_Position = PushConstants.render_matrix * vec4(v.position, 1.0f);
-  //gl_Position = vec4(v.position, 1.0f);
+  // Per-instance model transform
+  mat4 model = PushConstants.transformBuffer.transforms[gl_InstanceIndex];
+
+  // Final position
+  gl_Position = PushConstants.render_matrix * model * vec4(v.position, 1.0);
+
   outColor = v.color.xyz;
   outUV.x = v.uv_x;
   outUV.y = v.uv_y;
