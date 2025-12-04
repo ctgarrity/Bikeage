@@ -91,3 +91,16 @@ struct Vertex
     float uv_y;
     glm::vec4 color;
 };
+
+struct GPUDrawPushConstants
+{
+    glm::mat4 world_matrix;
+    VkDeviceAddress vertex_buffer;
+};
+
+struct GPUMeshBuffers
+{
+    AllocatedBuffer index_buffer;
+    AllocatedBuffer vertex_buffer;
+    VkDeviceAddress vertex_buffer_address;
+};

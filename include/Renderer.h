@@ -33,6 +33,12 @@ private:
 
     VkPipeline m_triangle_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_triangle_pipeline_layout = VK_NULL_HANDLE;
+    GPUDrawPushConstants m_rectangle_push_constants;
+    GPUMeshBuffers m_rectangle;
+
+    VkFence m_imm_fence = VK_NULL_HANDLE;
+    VkCommandBuffer m_imm_command_buffer = VK_NULL_HANDLE;
+    VkCommandPool m_imm_command_pool = VK_NULL_HANDLE;
 
     void init_sdl();
     void create_instance();
@@ -42,19 +48,26 @@ private:
     void create_swapchain();
     void recreate_swapchain();
     void init_vma();
-    void create_buffer();
-    void destroy_buffer();
+
+    AllocatedBuffer create_buffer(size_t alloc_size, VkBufferUsageFlags usage, VmaMemoryUsage memory_usage);
+    void destroy_buffer(AllocatedBuffer& buffer);
     void create_draw_image();
     void create_depth_image();
     void destroy_image(AllocatedImage& img);
+
     void init_imgui();
     void draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view);
+
     void create_command_buffers();
     void init_sync_structures();
     // void init_descriptors();
     void init_triangle_pipeline();
     void draw_triangle(VkCommandBuffer cmd);
     void draw_frame();
+
+    GPUMeshBuffers gpu_mesh_upload(std::span<uint32_t> indices, std::span<Vertex> vertices);
+    void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+    void init_default_data();
     FrameData& get_current_frame()
     {
         return m_frame_data[m_frame_index % FRAMES_IN_FLIGHT];
