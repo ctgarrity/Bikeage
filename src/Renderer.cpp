@@ -932,9 +932,9 @@ GPUMeshBuffers Renderer::gpu_mesh_upload(std::span<uint32_t> indices,
             vkCmdCopyBuffer(cmd, staging.buffer, new_surface.index_buffer.buffer, 1, &index_copy);
 
             VkBufferCopy transform_copy = {};
-            index_copy.dstOffset = 0;
-            index_copy.srcOffset = vertex_buffer_size + index_buffer_size;
-            index_copy.size = instance_transform_buffer_size;
+            transform_copy.dstOffset = 0;
+            transform_copy.srcOffset = vertex_buffer_size + index_buffer_size;
+            transform_copy.size = instance_transform_buffer_size;
             vkCmdCopyBuffer(cmd, staging.buffer, new_surface.instance_transform_buffer.buffer, 1, &transform_copy);
         });
 
@@ -990,7 +990,7 @@ void Renderer::init_default_data()
     std::mt19937 rng{ std::random_device{}() };
 
     // Example: random positions in range [-10, 10]
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> dist(-2.5f, 2.5f);
 
     for (glm::mat4& m : instance_transforms)
     {
