@@ -15,6 +15,7 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "Initializers.h"
 #include "Utilities.h"
+#include <glm/gtx/transform.hpp>
 #include "PipelineBuilder.h"
 
 void Renderer::init()
@@ -647,9 +648,20 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
 
     vkCmdBindIndexBuffer(cmd, m_rectangle.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
-
+    //m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
     m_rectangle_push_constants.vertex_buffer = m_rectangle.vertex_buffer_address;
+    glm::mat4 view = glm::translate(glm::vec3{ 0,0,-5 });
+    // camera projection
+    glm::mat4 projection = glm::perspective(glm::radians(70.f),
+                         (float)m_swapchain_data.draw_extent_2D.width / (float)m_swapchain_data.draw_extent_2D.height,
+                         10000.f,
+                         0.1f);
+
+    // invert the Y direction on projection matrix so that we are more similar
+    // to opengl and gltf axis
+    projection[1][1] *= -1;
+    m_rectangle_push_constants.world_matrix = projection * view;
+
     vkCmdPushConstants(cmd,
                        m_triangle_pipeline_layout,
                        VK_SHADER_STAGE_VERTEX_BIT,

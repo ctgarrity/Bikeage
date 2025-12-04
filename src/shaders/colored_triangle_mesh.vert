@@ -29,8 +29,10 @@ void main()
 	//load vertex data from device adress
 	Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
 
+	//mat4 InstanceTransform = PushConstants.instance_transform[gl_InstanceIndex];
 	//output data
-	gl_Position = PushConstants.render_matrix *vec4(v.position, 1.0f);
+	//gl_Position = PushConstants.render_matrix * vec4(v.position, 1.0f);
+	gl_Position = vec4(v.position, 1.0f);
 	outColor = v.color.xyz;
 	outUV.x = v.uv_x;
 	outUV.y = v.uv_y;
