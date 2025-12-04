@@ -42,6 +42,7 @@ private:
     VkPipelineLayout m_compute_layout = VK_NULL_HANDLE;
     VkPipeline m_compute_pipeline = VK_NULL_HANDLE;
     ComputePushConstants m_compute_push_constants;
+    MousePos m_mouse_pos;
 
     VkFence m_imm_fence = VK_NULL_HANDLE;
     VkCommandBuffer m_imm_command_buffer = VK_NULL_HANDLE;

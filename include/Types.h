@@ -112,3 +112,9 @@ struct GPUMeshBuffers
     AllocatedBuffer vertex_buffer;
     VkDeviceAddress vertex_buffer_address;
 };
+
+struct MousePos
+{
+    float x;
+    float y;
+};

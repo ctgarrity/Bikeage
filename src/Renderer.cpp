@@ -10,6 +10,7 @@
 #include <vulkan/vulkan_core.h>
 #include "Types.h"
 #include "VkBootstrap.h"
+#include "glm/fwd.hpp"
 #include "imgui.h"
 #include "backends/imgui_impl_sdl3.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -70,6 +71,10 @@ void Renderer::run()
                 // Use pending resize flag and only set resize after mouse release
                 m_swapchain_data.resize_requested = true;
             }
+            if (event.type == SDL_EVENT_MOUSE_MOTION)
+            {
+                SDL_GetMouseState(&m_mouse_pos.x, &m_mouse_pos.y);
+            }
         }
 
         if (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED)
@@ -94,6 +99,15 @@ void Renderer::run()
 
         bool show_demo = true;
         ImGui::ShowDemoWindow(&show_demo);
+
+        if (ImGui::Begin("Push Constants"))
+        {
+            ImGui::InputFloat4("Time", (float*)&m_compute_push_constants.time);
+            ImGui::InputFloat4("Color 1", (float*)&m_compute_push_constants.color1);
+            ImGui::InputFloat4("Color 2", (float*)&m_compute_push_constants.color2);
+            ImGui::InputFloat4("Work Group Coords", (float*)&m_compute_push_constants.cell_coords);
+        }
+        ImGui::End();
 
         ImGui::Render();
         draw_frame();
@@ -750,6 +764,9 @@ void Renderer::draw_background(VkCommandBuffer cmd_buffer)
     vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute_pipeline);
     vkCmdBindDescriptorSets(
         cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute_layout, 0, 1, &m_compute_descriptor_set, 0, nullptr);
+    m_compute_push_constants.time.x = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+    m_compute_push_constants.cell_coords.x = glm::floor(m_mouse_pos.x / 16.0);
+    m_compute_push_constants.cell_coords.y = glm::floor(m_mouse_pos.y / 16.0);
     vkCmdPushConstants(cmd_buffer,
                        m_compute_layout,
                        VK_SHADER_STAGE_COMPUTE_BIT,
@@ -946,6 +963,12 @@ void Renderer::init_default_data()
             destroy_buffer(m_rectangle.index_buffer);
             destroy_buffer(m_rectangle.vertex_buffer);
         });
+
+    // Compute Push Constants
+    m_compute_push_constants.time = glm::vec4(0.0f);
+    m_compute_push_constants.color1 = glm::vec4(0.0f);
+    m_compute_push_constants.color2 = glm::vec4(0.0f);
+    m_compute_push_constants.cell_coords = glm::vec4(0.0f);
 }
 
 void DeletionQueue::push_function(std::function<void()>&& func)
