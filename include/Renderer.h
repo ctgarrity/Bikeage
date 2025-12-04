@@ -36,6 +36,13 @@ private:
     GPUDrawPushConstants m_rectangle_push_constants;
     GPUMeshBuffers m_rectangle;
 
+    VkDescriptorSetLayout m_compute_descriptor_layout = VK_NULL_HANDLE;
+    VkDescriptorPool m_compute_descriptor_pool = VK_NULL_HANDLE;
+    VkDescriptorSet m_compute_descriptor_set = VK_NULL_HANDLE;
+    VkPipelineLayout m_compute_layout = VK_NULL_HANDLE;
+    VkPipeline m_compute_pipeline = VK_NULL_HANDLE;
+    ComputePushConstants m_compute_push_constants;
+
     VkFence m_imm_fence = VK_NULL_HANDLE;
     VkCommandBuffer m_imm_command_buffer = VK_NULL_HANDLE;
     VkCommandPool m_imm_command_pool = VK_NULL_HANDLE;
@@ -54,15 +61,18 @@ private:
     void create_draw_image();
     void create_depth_image();
     void destroy_image(AllocatedImage& img);
+    void destroy_draw_image(AllocatedImage& img);
 
     void init_imgui();
     void draw_imgui(VkCommandBuffer cmd, VkImageView target_image_view);
 
     void create_command_buffers();
     void init_sync_structures();
-    // void init_descriptors();
+    void init_descriptors();
     void init_triangle_pipeline();
+    void init_compute_pipeline();
     void draw_triangle(VkCommandBuffer cmd);
+    void draw_background(VkCommandBuffer cmd);
     void draw_frame();
 
     GPUMeshBuffers gpu_mesh_upload(std::span<uint32_t> indices, std::span<Vertex> vertices);

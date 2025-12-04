@@ -98,6 +98,14 @@ struct GPUDrawPushConstants
     VkDeviceAddress vertex_buffer;
 };
 
+struct ComputePushConstants
+{
+    glm::vec4 time;
+    glm::vec4 color1 = {};
+    glm::vec4 color2 = {};
+    glm::vec4 cell_coords = {};
+};
+
 struct GPUMeshBuffers
 {
     AllocatedBuffer index_buffer;

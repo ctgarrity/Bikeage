@@ -27,11 +27,13 @@ void Renderer::init()
     create_device();
     create_swapchain();
     init_vma();
+    init_descriptors();
     create_draw_image();
     create_depth_image();
     create_command_buffers();
     init_sync_structures();
     init_triangle_pipeline();
+    init_compute_pipeline();
     init_imgui();
     init_default_data();
 }
@@ -309,7 +311,7 @@ void Renderer::recreate_swapchain()
     vkDeviceWaitIdle(m_device);
 
     m_swapchain_data.swapchain.destroy_image_views(m_swapchain_data.swapchain_image_views);
-    destroy_image(m_swapchain_data.draw_image);
+    destroy_draw_image(m_swapchain_data.draw_image);
     destroy_image(m_swapchain_data.depth_image);
     create_swapchain();
     create_draw_image();
@@ -397,6 +399,30 @@ void Renderer::create_draw_image()
     std::println("Draw image created\n\twidth: {}\n\theigth: {}",
                  m_swapchain_data.draw_image.image_extent.width,
                  m_swapchain_data.draw_image.image_extent.height);
+
+    VkDescriptorSetAllocateInfo descriptor_alloc_info = {};
+    descriptor_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptor_alloc_info.pNext = nullptr;
+    descriptor_alloc_info.descriptorPool = m_compute_descriptor_pool;
+    descriptor_alloc_info.descriptorSetCount = 1;
+    descriptor_alloc_info.pSetLayouts = &m_compute_descriptor_layout;
+    VK_CHECK(vkAllocateDescriptorSets(m_device, &descriptor_alloc_info, &m_compute_descriptor_set));
+
+    VkDescriptorImageInfo image_info = {};
+    image_info.sampler = VK_NULL_HANDLE;                           // storage image, no sampler
+    image_info.imageView = m_swapchain_data.draw_image.image_view; // your created view
+    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;              // matches how you use it
+
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = m_compute_descriptor_set;
+    write.dstBinding = 0;
+    write.dstArrayElement = 0;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    write.pImageInfo = &image_info;
+
+    vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
 }
 
 void Renderer::create_depth_image()
@@ -430,6 +456,12 @@ void Renderer::destroy_image(AllocatedImage& img)
 {
     vkDestroyImageView(m_device, img.image_view, nullptr);
     vmaDestroyImage(m_vma_allocator, img.image, img.allocation);
+}
+
+void Renderer::destroy_draw_image(AllocatedImage& img)
+{
+    destroy_image(img);
+    vkResetDescriptorPool(m_device, m_compute_descriptor_pool, 0);
 }
 
 void Renderer::create_command_buffers()
@@ -468,12 +500,7 @@ void Renderer::create_command_buffers()
     VkCommandBufferAllocateInfo cmd_alloc_info = init::command_buffer_allocate_info(m_imm_command_pool, 1);
     VK_CHECK(vkAllocateCommandBuffers(m_device, &cmd_alloc_info, &m_imm_command_buffer));
 
-    m_deletion_queue.push_function(
-        [this]()
-        {
-            std::cout << "m_deletion_queue vkDestroyCommandPool" << std::endl;
-            vkDestroyCommandPool(m_device, m_imm_command_pool, nullptr);
-        });
+    m_deletion_queue.push_function([this]() { vkDestroyCommandPool(m_device, m_imm_command_pool, nullptr); });
 }
 
 void Renderer::init_sync_structures()
@@ -520,48 +547,41 @@ void Renderer::init_sync_structures()
 
     // Immediate Fence
     VK_CHECK(vkCreateFence(m_device, &fence_info, nullptr, &m_imm_fence));
-    m_deletion_queue.push_function(
-        [this]()
-        {
-            std::cout << "m_deletion_queue vkDestroyFence" << std::endl;
-            vkDestroyFence(m_device, m_imm_fence, nullptr);
-        });
+    m_deletion_queue.push_function([this]() { vkDestroyFence(m_device, m_imm_fence, nullptr); });
 }
 
-// void Renderer::init_descriptors()
-// {
-//     VkDescriptorSetLayoutBinding layout_binding = {};
-//     layout_binding.binding = 0;
-//     layout_binding.descriptorCount = 1;
-//     layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-//     layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-//     layout_binding.pImmutableSamplers = nullptr;
-//
-//     std::vector<VkDescriptorSetLayoutBinding> descriptor_layout_bindings;
-//     descriptor_layout_bindings.push_back(layout_binding);
-//
-//     VkDescriptorSetLayoutCreateInfo layout_info = {};
-//     layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-//     layout_info.pNext = nullptr;
-//     layout_info.bindingCount = (uint32_t)descriptor_layout_bindings.size();
-//     layout_info.pBindings = descriptor_layout_bindings.data();
-//     vkCreateDescriptorSetLayout(m_init_data.device, &layout_info, nullptr, &m_render_data.descriptor_layout);
-//     m_deletion_queue.push_function(
-//         [this]() { vkDestroyDescriptorSetLayout(m_init_data.device, m_render_data.descriptor_layout, nullptr); });
-//
-//     std::vector<VkDescriptorPoolSize> pool_sizes = { { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 } };
-//
-//     VkDescriptorPoolCreateInfo pool_info = {};
-//     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-//     pool_info.pNext = nullptr;
-//     pool_info.pPoolSizes = pool_sizes.data();
-//     pool_info.poolSizeCount = (uint32_t)pool_sizes.size();
-//     pool_info.maxSets = 1;
-//     VK_CHECK(vkCreateDescriptorPool(m_init_data.device, &pool_info, nullptr, &m_render_data.descriptor_pool));
-//     m_deletion_queue.push_function(
-//         [this]() { vkDestroyDescriptorPool(m_init_data.device, m_render_data.descriptor_pool, nullptr); });
-//     std::println("Descriptors initialized");
-// }
+void Renderer::init_descriptors()
+{
+    VkDescriptorSetLayoutBinding layout_binding = {};
+    layout_binding.binding = 0;
+    layout_binding.descriptorCount = 1;
+    layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    layout_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    layout_binding.pImmutableSamplers = nullptr;
+
+    std::vector<VkDescriptorSetLayoutBinding> descriptor_layout_bindings;
+    descriptor_layout_bindings.push_back(layout_binding);
+
+    VkDescriptorSetLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_info.pNext = nullptr;
+    layout_info.bindingCount = (uint32_t)descriptor_layout_bindings.size();
+    layout_info.pBindings = descriptor_layout_bindings.data();
+    vkCreateDescriptorSetLayout(m_device, &layout_info, nullptr, &m_compute_descriptor_layout);
+    m_deletion_queue.push_function([this]()
+                                   { vkDestroyDescriptorSetLayout(m_device, m_compute_descriptor_layout, nullptr); });
+
+    std::vector<VkDescriptorPoolSize> pool_sizes = { { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 } };
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.pNext = nullptr;
+    pool_info.pPoolSizes = pool_sizes.data();
+    pool_info.poolSizeCount = (uint32_t)pool_sizes.size();
+    pool_info.maxSets = 1;
+    VK_CHECK(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_compute_descriptor_pool));
+    m_deletion_queue.push_function([this]() { vkDestroyDescriptorPool(m_device, m_compute_descriptor_pool, nullptr); });
+}
 
 void Renderer::init_triangle_pipeline()
 {
@@ -616,6 +636,55 @@ void Renderer::init_triangle_pipeline()
         });
 }
 
+void Renderer::init_compute_pipeline()
+{
+    VkPushConstantRange push_constant_range = {};
+    push_constant_range.offset = 0;
+    push_constant_range.size = sizeof(ComputePushConstants);
+    push_constant_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkPipelineLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout_info.pNext = nullptr;
+    layout_info.pSetLayouts = &m_compute_descriptor_layout;
+    layout_info.setLayoutCount = 1;
+    layout_info.pPushConstantRanges = &push_constant_range;
+    layout_info.pushConstantRangeCount = 1;
+    VK_CHECK(vkCreatePipelineLayout(m_device, &layout_info, nullptr, &m_compute_layout));
+
+    VkShaderModule gradient_shader_module = {};
+    if (!util::load_shader_module("shaders/gradient.spv", m_device, &gradient_shader_module))
+    // if (!load_shader_module(m_shader_path.c_str(), m_init_data.device, &gradient_shader_module))
+    {
+        std::cerr << "Failed to load gradient shader" << std::endl;
+        return;
+    }
+
+    VkPipelineShaderStageCreateInfo stage_info = {};
+    stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stage_info.pNext = nullptr;
+    stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    stage_info.module = gradient_shader_module;
+    stage_info.pName = "main";
+
+    VkComputePipelineCreateInfo compute_pipeline_create_info = {};
+    compute_pipeline_create_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    compute_pipeline_create_info.pNext = nullptr;
+    compute_pipeline_create_info.layout = m_compute_layout;
+    compute_pipeline_create_info.stage = stage_info;
+
+    VK_CHECK(vkCreateComputePipelines(
+        m_device, VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_compute_pipeline));
+
+    vkDestroyShaderModule(m_device, gradient_shader_module, nullptr);
+    m_deletion_queue.push_function(
+        [this]()
+        {
+            vkDestroyPipelineLayout(m_device, m_compute_layout, nullptr);
+            vkDestroyPipeline(m_device, m_compute_pipeline, nullptr);
+        });
+}
+
 void Renderer::draw_triangle(VkCommandBuffer cmd)
 {
     VkRenderingAttachmentInfo color_attachment = init::color_attachment_info(
@@ -648,11 +717,12 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
 
     vkCmdBindIndexBuffer(cmd, m_rectangle.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    //m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
+    // m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
     m_rectangle_push_constants.vertex_buffer = m_rectangle.vertex_buffer_address;
-    glm::mat4 view = glm::translate(glm::vec3{ 0,0,-5 });
+    glm::mat4 view = glm::translate(glm::vec3{ 0, 0, -5 });
     // camera projection
-    glm::mat4 projection = glm::perspective(glm::radians(70.f),
+    glm::mat4 projection =
+        glm::perspective(glm::radians(70.f),
                          (float)m_swapchain_data.draw_extent_2D.width / (float)m_swapchain_data.draw_extent_2D.height,
                          10000.f,
                          0.1f);
@@ -673,6 +743,24 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
     vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
+}
+
+void Renderer::draw_background(VkCommandBuffer cmd_buffer)
+{
+    vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute_pipeline);
+    vkCmdBindDescriptorSets(
+        cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute_layout, 0, 1, &m_compute_descriptor_set, 0, nullptr);
+    vkCmdPushConstants(cmd_buffer,
+                       m_compute_layout,
+                       VK_SHADER_STAGE_COMPUTE_BIT,
+                       0,
+                       sizeof(ComputePushConstants),
+                       &m_compute_push_constants);
+
+    vkCmdDispatch(cmd_buffer,
+                  std::ceil(m_swapchain_data.draw_extent_2D.width / 16.0),
+                  std::ceil(m_swapchain_data.draw_extent_2D.height / 16.0),
+                  1);
 }
 
 void Renderer::draw_frame()
@@ -699,10 +787,15 @@ void Renderer::draw_frame()
     VkCommandBufferBeginInfo begin_info = init::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd_buffer, &begin_info));
 
-    // Draw Triangle
+    // Draw Compute
+    util::transition_image(
+        cmd_buffer, m_swapchain_data.draw_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    draw_background(cmd_buffer);
+
+    // Draw Rectangle
     util::transition_image(cmd_buffer,
                            m_swapchain_data.draw_image.image,
-                           VK_IMAGE_LAYOUT_UNDEFINED,
+                           VK_IMAGE_LAYOUT_GENERAL,
                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     draw_triangle(cmd_buffer);
 
@@ -850,7 +943,6 @@ void Renderer::init_default_data()
     m_deletion_queue.push_function(
         [this]()
         {
-            std::cout << "m_deletion_queue destroy_buffer(m_rectangle.index_buffer);" << std::endl;
             destroy_buffer(m_rectangle.index_buffer);
             destroy_buffer(m_rectangle.vertex_buffer);
         });

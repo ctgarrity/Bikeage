@@ -1,0 +1,27 @@
+//GLSL version to use
+#version 460
+
+//size of a workgroup for compute
+layout(local_size_x = 16, local_size_y = 16) in;
+
+//descriptor bindings for the pipeline
+layout(rgba16f, set = 0, binding = 0) uniform image2D image;
+layout(push_constant, std430) uniform PushConstantsData {
+  float time;
+  vec3 color1;
+  vec3 color2;
+  vec2 cell_coords;
+} pc;
+
+void main()
+{
+  ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+  vec2 size = imageSize(image);
+  vec2 uv = texelCoord.xy / size.xy;
+
+  if (texelCoord.x < size.x && texelCoord.y < size.y)
+  {
+    vec3 col = 0.5 + 0.5 * cos(pc.time + uv.xyx + vec3(0, 2, 4));
+    imageStore(image, texelCoord, vec4(col, 1));
+  }
+}
