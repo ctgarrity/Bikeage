@@ -647,6 +647,8 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
 
     vkCmdBindIndexBuffer(cmd, m_rectangle.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
+    m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
+
     m_rectangle_push_constants.vertex_buffer = m_rectangle.vertex_buffer_address;
     vkCmdPushConstants(cmd,
                        m_triangle_pipeline_layout,
@@ -656,7 +658,7 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
                        &m_rectangle_push_constants);
 
     // vkCmdDraw(cmd, 3, 1, 0, 0);
-    vkCmdDrawIndexed(cmd, 4, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 }
