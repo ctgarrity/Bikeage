@@ -258,7 +258,7 @@ void Renderer::pick_physical_device()
 
     vkb::PhysicalDeviceSelector selector{ m_instance };
     auto phys_ret = selector.set_surface(m_surface)
-                        .prefer_gpu_device_type()
+                        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                         .set_required_features_12(features12)
                         .set_required_features_13(features13)
                         .select();
