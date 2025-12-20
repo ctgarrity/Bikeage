@@ -47,18 +47,17 @@ set(HEADERS
     include/Camera.h
 )
 
-file(GLOB_RECURSE SHADER_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.vert"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.frag"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.comp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.glsl"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.hlsl"
+set(SHADERS 
+    src/shaders/colored_triangle.vert
+    src/shaders/colored_triangle_mesh.vert
+    src/shaders/colored_triangle.frag
+    src/shaders/gradient.comp
 )
 
 add_executable(${PROJECT_NAME} 
 	${SOURCES}
 	${HEADERS}
-    ${SHADER_FILES}
+  ${SHADERS}
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE)
