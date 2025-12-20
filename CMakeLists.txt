@@ -28,6 +28,7 @@ set(SOURCES
   src/Initializers.cpp
   src/Utilities.cpp
   src/PipelineBuilder.cpp
+  src/Camera.cpp
   vendored/imgui/imgui.cpp
   vendored/imgui/imgui_demo.cpp
   vendored/imgui/imgui_draw.cpp
@@ -43,6 +44,7 @@ set(HEADERS
     include/Initializers.h
     include/Utilities.h
     include/PipelineBuilder.h
+    include/Camera.h
 )
 
 file(GLOB_RECURSE SHADER_FILES
