@@ -12,7 +12,7 @@ _deps
 CMakeUserPresets.json
 build/
 .cache/
-.codex/
+.codex
 imgui.ini
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
