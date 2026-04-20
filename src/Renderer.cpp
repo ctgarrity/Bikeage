@@ -99,8 +99,8 @@ void Renderer::run()
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        bool show_demo = true;
-        ImGui::ShowDemoWindow(&show_demo);
+        // bool show_demo = true;
+        // ImGui::ShowDemoWindow(&show_demo);
 
         if (ImGui::Begin("Push Constants"))
         {
@@ -809,6 +809,7 @@ void Renderer::draw_frame()
     VK_CHECK(vkBeginCommandBuffer(cmd_buffer, &begin_info));
 
     // Draw Compute
+    // TODO: Pass a bool to the draw_xxx funcs to toggle on and off. Make it configurable in ImGui
     util::transition_image(
         cmd_buffer, m_swapchain_data.draw_image.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
     draw_background(cmd_buffer);
@@ -818,6 +819,10 @@ void Renderer::draw_frame()
                            m_swapchain_data.draw_image.image,
                            VK_IMAGE_LAYOUT_GENERAL,
                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    util::transition_image(cmd_buffer,
+                           m_swapchain_data.depth_image.image,
+                           VK_IMAGE_LAYOUT_UNDEFINED,
+                           VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     draw_triangle(cmd_buffer);
 
     // Draw ImGui
