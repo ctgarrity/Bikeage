@@ -68,16 +68,15 @@ void Renderer::run()
                 done = true;
             if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(m_window))
                 done = true;
-            if (event.window.type == SDL_EVENT_WINDOW_RESIZED)
+            if ((event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ||
+                 event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) &&
+                event.window.windowID == SDL_GetWindowID(m_window))
             {
-                // Use pending resize flag and only set resize after mouse release
                 m_swapchain_data.resize_requested = true;
             }
-            if (event.type == SDL_EVENT_MOUSE_MOTION)
-            {
-                SDL_GetMouseState(&m_mouse_pos.x, &m_mouse_pos.y);
-            }
         }
+
+        update_mouse_position();
 
         if (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED)
         {
@@ -87,10 +86,7 @@ void Renderer::run()
 
         if (m_swapchain_data.resize_requested)
         {
-            int width, height;
-            SDL_GetWindowSize(m_window, &width, &height);
-            m_window_extent.width = width;
-            m_window_extent.height = height;
+            update_window_extent();
             recreate_swapchain();
             m_swapchain_data.resize_requested = false;
         }
@@ -200,9 +196,50 @@ void Renderer::init_sdl()
 
     int width, height;
     SDL_GetWindowSize(m_window, &width, &height);
-    m_window_extent.width = width;
-    m_window_extent.height = height;
-    std::println("Window size: Width {}, Height {}", m_window_extent.width, m_window_extent.height);
+    update_window_extent();
+    std::println("Window size: Width {}, Height {}", width, height);
+    std::println("Drawable size: Width {}, Height {}", m_window_extent.width, m_window_extent.height);
+}
+
+void Renderer::update_window_extent()
+{
+    int pixel_width = 0;
+    int pixel_height = 0;
+    if (!SDL_GetWindowSizeInPixels(m_window, &pixel_width, &pixel_height) || pixel_width <= 0 || pixel_height <= 0)
+    {
+        int window_width = 0;
+        int window_height = 0;
+        SDL_GetWindowSize(m_window, &window_width, &window_height);
+        pixel_width = window_width;
+        pixel_height = window_height;
+    }
+
+    m_window_extent.width = static_cast<uint32_t>(std::max(pixel_width, 1));
+    m_window_extent.height = static_cast<uint32_t>(std::max(pixel_height, 1));
+}
+
+void Renderer::update_mouse_position()
+{
+    float mouse_x = 0.0f;
+    float mouse_y = 0.0f;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+
+    int window_width = 0;
+    int window_height = 0;
+    SDL_GetWindowSize(m_window, &window_width, &window_height);
+
+    int pixel_width = 0;
+    int pixel_height = 0;
+    if (!SDL_GetWindowSizeInPixels(m_window, &pixel_width, &pixel_height) || pixel_width <= 0 || pixel_height <= 0 ||
+        window_width <= 0 || window_height <= 0)
+    {
+        m_mouse_pos.x = mouse_x;
+        m_mouse_pos.y = mouse_y;
+        return;
+    }
+
+    m_mouse_pos.x = mouse_x * static_cast<float>(pixel_width) / static_cast<float>(window_width);
+    m_mouse_pos.y = mouse_y * static_cast<float>(pixel_height) / static_cast<float>(window_height);
 }
 
 void Renderer::create_instance()
@@ -787,7 +824,6 @@ void Renderer::draw_background(VkCommandBuffer cmd_buffer)
 void Renderer::draw_frame()
 {
     VK_CHECK(vkWaitForFences(m_device, 1, &get_current_frame().render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(m_device, 1, &get_current_frame().render_fence));
     get_current_frame().flush_frame_data();
 
     uint32_t swapchain_image_index;
@@ -802,6 +838,8 @@ void Renderer::draw_frame()
         m_swapchain_data.resize_requested = true;
         return;
     }
+
+    VK_CHECK(vkResetFences(m_device, 1, &get_current_frame().render_fence));
 
     VkCommandBuffer cmd_buffer = get_current_frame().command_buffer;
     VK_CHECK(vkResetCommandBuffer(cmd_buffer, 0));

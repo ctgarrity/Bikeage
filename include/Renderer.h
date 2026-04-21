@@ -49,6 +49,8 @@ private:
     VkCommandPool m_imm_command_pool = VK_NULL_HANDLE;
 
     void init_sdl();
+    void update_window_extent();
+    void update_mouse_position();
     void create_instance();
     void create_surface();
     void pick_physical_device();
