@@ -203,19 +203,30 @@ void Renderer::init_sdl()
 
 void Renderer::update_window_extent()
 {
+    int window_width = 0;
+    int window_height = 0;
+    SDL_GetWindowSize(m_window, &window_width, &window_height);
+
     int pixel_width = 0;
     int pixel_height = 0;
     if (!SDL_GetWindowSizeInPixels(m_window, &pixel_width, &pixel_height) || pixel_width <= 0 || pixel_height <= 0)
     {
-        int window_width = 0;
-        int window_height = 0;
-        SDL_GetWindowSize(m_window, &window_width, &window_height);
         pixel_width = window_width;
         pixel_height = window_height;
     }
 
     m_window_extent.width = static_cast<uint32_t>(std::max(pixel_width, 1));
     m_window_extent.height = static_cast<uint32_t>(std::max(pixel_height, 1));
+
+    if (window_width <= 0 || window_height <= 0)
+    {
+        m_mouse_scale.x = 1.0f;
+        m_mouse_scale.y = 1.0f;
+        return;
+    }
+
+    m_mouse_scale.x = static_cast<float>(pixel_width) / static_cast<float>(window_width);
+    m_mouse_scale.y = static_cast<float>(pixel_height) / static_cast<float>(window_height);
 }
 
 void Renderer::update_mouse_position()
@@ -224,22 +235,8 @@ void Renderer::update_mouse_position()
     float mouse_y = 0.0f;
     SDL_GetMouseState(&mouse_x, &mouse_y);
 
-    int window_width = 0;
-    int window_height = 0;
-    SDL_GetWindowSize(m_window, &window_width, &window_height);
-
-    int pixel_width = 0;
-    int pixel_height = 0;
-    if (!SDL_GetWindowSizeInPixels(m_window, &pixel_width, &pixel_height) || pixel_width <= 0 || pixel_height <= 0 ||
-        window_width <= 0 || window_height <= 0)
-    {
-        m_mouse_pos.x = mouse_x;
-        m_mouse_pos.y = mouse_y;
-        return;
-    }
-
-    m_mouse_pos.x = mouse_x * static_cast<float>(pixel_width) / static_cast<float>(window_width);
-    m_mouse_pos.y = mouse_y * static_cast<float>(pixel_height) / static_cast<float>(window_height);
+    m_mouse_pos.x = mouse_x * m_mouse_scale.x;
+    m_mouse_pos.y = mouse_y * m_mouse_scale.y;
 }
 
 void Renderer::create_instance()
