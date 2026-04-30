@@ -3,6 +3,8 @@
 
 layout(location = 0) out vec3 outColor;
 layout(location = 1) out vec2 outUV;
+layout(location = 2) out vec3 outNormal;
+layout(location = 3) out vec3 outWorldPosition;
 
 struct Vertex {
   vec3 position;
@@ -35,11 +37,14 @@ void main()
 
   // Per-instance model transform
   mat4 model = PushConstants.transformBuffer.transforms[gl_InstanceIndex];
+  vec4 worldPosition = model * vec4(v.position, 1.0);
 
   // Final position
-  gl_Position = PushConstants.render_matrix * model * vec4(v.position, 1.0);
+  gl_Position = PushConstants.render_matrix * worldPosition;
 
   outColor = v.color.xyz;
   outUV.x = v.uv_x;
   outUV.y = v.uv_y;
+  outNormal = normalize(mat3(transpose(inverse(model))) * v.normal);
+  outWorldPosition = worldPosition.xyz;
 }

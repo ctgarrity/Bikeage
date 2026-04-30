@@ -4,10 +4,10 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_init.h"
 #include <algorithm>
+#include <filesystem>
 #include <ranges>
 #include <iostream>
 #include <print>
-#include <random>
 
 #include <vulkan/vulkan_core.h>
 #include "Types.h"
@@ -18,6 +18,7 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "Initializers.h"
 #include "Utilities.h"
+#include "MeshLoader.h"
 #include <glm/gtx/transform.hpp>
 #include "PipelineBuilder.h"
 
@@ -790,9 +791,7 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
                        sizeof(GPUDrawPushConstants),
                        &m_rectangle_push_constants);
 
-    // vkCmdDraw(cmd, 3, 1, 0, 0);
-    vkCmdDrawIndexed(cmd, 6, 10, 0, 0, 0);
-    // vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(cmd, m_mesh_index_count, m_mesh_instance_count, 0, 0, 0);
 
     vkCmdEndRendering(cmd);
 }
@@ -1003,43 +1002,42 @@ void Renderer::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 
 void Renderer::init_default_data()
 {
-    std::array<Vertex, 4> rect_vertices;
-    rect_vertices[0].position = { 0.5, -0.5, 0 };
-    rect_vertices[1].position = { 0.5, 0.5, 0 };
-    rect_vertices[2].position = { -0.5, -0.5, 0 };
-    rect_vertices[3].position = { -0.5, 0.5, 0 };
-
-    rect_vertices[0].color = { 0, 0, 0, 1 };
-    rect_vertices[1].color = { 0.5, 0.5, 0.5, 1 };
-    rect_vertices[2].color = { 1, 0, 0, 1 };
-    rect_vertices[3].color = { 0, 1, 0, 1 };
-
-    std::array<uint32_t, 6> rect_indices;
-    rect_indices[0] = 0;
-    rect_indices[1] = 1;
-    rect_indices[2] = 2;
-
-    rect_indices[3] = 2;
-    rect_indices[4] = 1;
-    rect_indices[5] = 3;
-
-    std::array<glm::mat4, 10> instance_transforms;
-
-    // From ChatGPT
-    // Random number generator
-    std::mt19937 rng{ std::random_device{}() };
-
-    // Example: random positions in range [-10, 10]
-    std::uniform_real_distribution<float> dist(-2.5f, 2.5f);
-
-    for (glm::mat4& m : instance_transforms)
+    const auto mesh_path =
+        std::filesystem::path{ BIKEAGE_PROJECT_ROOT } / "vendored/gltf-assets/Models/CesiumMan/glTF/CesiumMan.gltf";
+    if (auto loaded_mesh = LoadMesh(mesh_path))
     {
-        glm::vec3 pos(dist(rng), dist(rng), dist(rng));
-
-        m = glm::translate(glm::mat4(1.0f), pos);
+        m_mesh_index_count = static_cast<uint32_t>(loaded_mesh->indices.size());
+        m_mesh_instance_count = static_cast<uint32_t>(loaded_mesh->instance_transforms.size());
+        m_rectangle = gpu_mesh_upload(loaded_mesh->indices, loaded_mesh->vertices, loaded_mesh->instance_transforms);
     }
+    else
+    {
+        std::array<Vertex, 4> rect_vertices;
+        rect_vertices[0].position = { 0.5, -0.5, 0 };
+        rect_vertices[1].position = { 0.5, 0.5, 0 };
+        rect_vertices[2].position = { -0.5, -0.5, 0 };
+        rect_vertices[3].position = { -0.5, 0.5, 0 };
 
-    m_rectangle = gpu_mesh_upload(rect_indices, rect_vertices, instance_transforms);
+        rect_vertices[0].color = { 0, 0, 0, 1 };
+        rect_vertices[1].color = { 0.5, 0.5, 0.5, 1 };
+        rect_vertices[2].color = { 1, 0, 0, 1 };
+        rect_vertices[3].color = { 0, 1, 0, 1 };
+
+        std::array<uint32_t, 6> rect_indices;
+        rect_indices[0] = 0;
+        rect_indices[1] = 1;
+        rect_indices[2] = 2;
+
+        rect_indices[3] = 2;
+        rect_indices[4] = 1;
+        rect_indices[5] = 3;
+
+        std::array<glm::mat4, 1> instance_transforms{ glm::mat4{ 1.0f } };
+
+        m_mesh_index_count = static_cast<uint32_t>(rect_indices.size());
+        m_mesh_instance_count = static_cast<uint32_t>(instance_transforms.size());
+        m_rectangle = gpu_mesh_upload(rect_indices, rect_vertices, instance_transforms);
+    }
 
     m_deletion_queue.push_function(
         [this]()

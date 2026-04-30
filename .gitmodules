@@ -17,3 +17,6 @@
 	path = vendored/imgui
 	url = git@github.com:ocornut/imgui.git
 	branch = docking
+[submodule "vendored/gltf-assets"]
+	path = vendored/gltf-assets
+	url = git@github.com:KhronosGroup/glTF-Sample-Assets.git

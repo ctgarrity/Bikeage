@@ -35,6 +35,8 @@ private:
     VkPipelineLayout m_triangle_pipeline_layout = VK_NULL_HANDLE;
     GPUDrawPushConstants m_rectangle_push_constants;
     GPUMeshBuffers m_rectangle;
+    uint32_t m_mesh_index_count = 0;
+    uint32_t m_mesh_instance_count = 0;
 
     VkDescriptorSetLayout m_compute_descriptor_layout = VK_NULL_HANDLE;
     VkDescriptorPool m_compute_descriptor_pool = VK_NULL_HANDLE;

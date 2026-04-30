@@ -14,6 +14,7 @@ add_subdirectory(vendored/sdl EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/vk-bootstrap EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/vma EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/glm EXCLUDE_FROM_ALL)
+add_subdirectory(vendored/fastgltf EXCLUDE_FROM_ALL)
 
 if (MSVC)
     add_compile_options(/W4 /permissive-)
@@ -29,6 +30,8 @@ set(SOURCES
   src/Utilities.cpp
   src/PipelineBuilder.cpp
   src/Camera.cpp
+  src/MeshLoader.cpp
+
   vendored/imgui/imgui.cpp
   vendored/imgui/imgui_demo.cpp
   vendored/imgui/imgui_draw.cpp
@@ -45,6 +48,7 @@ set(HEADERS
     include/Utilities.h
     include/PipelineBuilder.h
     include/Camera.h
+    include/MeshLoader.h
 )
 
 set(SHADERS 
@@ -60,11 +64,18 @@ add_executable(${PROJECT_NAME}
   ${SHADERS}
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL GLM_FORCE_RADIANS GLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    GLM_ENABLE_EXPERIMENTAL
+    GLM_FORCE_RADIANS
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    BIKEAGE_PROJECT_ROOT="${PROJECT_SOURCE_DIR}"
+)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/vendored
         ${PROJECT_SOURCE_DIR}/vendored/imgui
+        ${PROJECT_SOURCE_DIR}/vendored/imgui/backends
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS} Vulkan::Vulkan SDL3::SDL3 vk-bootstrap::vk-bootstrap GPUOpen::VulkanMemoryAllocator glm::glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_DL_LIBS} Vulkan::Vulkan SDL3::SDL3 vk-bootstrap::vk-bootstrap GPUOpen::VulkanMemoryAllocator glm::glm fastgltf::fastgltf)
