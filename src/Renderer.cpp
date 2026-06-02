@@ -40,6 +40,7 @@ void Renderer::init()
     init_compute_pipeline();
     init_imgui();
     init_default_data();
+    m_camera.position = glm::vec3{0.f, 1.f, 5.f};
 }
 
 void Renderer::destroy()
@@ -59,6 +60,7 @@ void Renderer::destroy()
 void Renderer::run()
 {
     bool done = false;
+    m_last_frame_time = SDL_GetTicks();
     while (!done)
     {
         SDL_Event event;
@@ -75,8 +77,19 @@ void Renderer::run()
             {
                 m_swapchain_data.resize_requested = true;
             }
+            if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_RIGHT)
+            {
+                m_mouse_captured = !m_mouse_captured;
+                SDL_SetWindowRelativeMouseMode(m_window, m_mouse_captured);
+            }
+            if (event.type != SDL_EVENT_MOUSE_MOTION || m_mouse_captured)
+                m_camera.process_sdl_event(event);
         }
 
+        uint64_t now = SDL_GetTicks();
+        float delta_s = (now - m_last_frame_time) / 1000.f;
+        m_last_frame_time = now;
+        m_camera.update(delta_s);
         update_mouse_position();
 
         if (SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED)
@@ -771,7 +784,7 @@ void Renderer::draw_triangle(VkCommandBuffer cmd)
     // m_rectangle_push_constants.world_matrix = glm::mat4{ 1.f };
     m_rectangle_push_constants.vertex_buffer = m_rectangle.vertex_buffer_address;
     m_rectangle_push_constants.transform_buffer = m_rectangle.instance_transform_buffer_address;
-    glm::mat4 view = glm::translate(glm::vec3{ 0, 0, -5 });
+    glm::mat4 view = m_camera.get_view_matrix();
     // camera projection
     glm::mat4 projection =
         glm::perspective(glm::radians(70.f),

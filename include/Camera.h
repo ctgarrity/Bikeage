@@ -1,11 +1,12 @@
 #pragma once
 #include "glm/glm.hpp"
+#include "glm/gtx/quaternion.hpp"
 #include "SDL3/SDL.h"
 
 class Camera
 {
 public:
-    glm::vec3 velocity;
+    glm::vec3 velocity{0.f, 0.f, 0.f};
     glm::vec3 position;
 
     float pitch{ 0.0f };
@@ -16,5 +17,5 @@ public:
 
     void process_sdl_event(SDL_Event& event);
 
-    void update();
+    void update(float delta_s);
 };

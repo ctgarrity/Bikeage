@@ -1,5 +1,6 @@
 #pragma once
 #include "Types.h"
+#include "Camera.h"
 #include "SDL3/SDL.h"
 #include "VkBootstrap.h"
 #include "vma/vk_mem_alloc.h"
@@ -46,6 +47,10 @@ private:
     ComputePushConstants m_compute_push_constants;
     MousePos m_mouse_pos;
     MousePos m_mouse_scale{ 1.0f, 1.0f };
+
+    Camera m_camera;
+    bool m_mouse_captured{ false };
+    uint64_t m_last_frame_time{ 0 };
 
     VkFence m_imm_fence = VK_NULL_HANDLE;
     VkCommandBuffer m_imm_command_buffer = VK_NULL_HANDLE;
