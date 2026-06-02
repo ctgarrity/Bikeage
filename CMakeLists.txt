@@ -51,18 +51,40 @@ set(HEADERS
     include/MeshLoader.h
 )
 
-set(SHADERS 
+find_program(GLSLC glslc HINTS "$ENV{VULKAN_SDK}/bin" REQUIRED)
+
+set(SHADER_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/shaders")
+
+set(SHADER_SOURCES
     src/shaders/colored_triangle.vert
     src/shaders/colored_triangle_mesh.vert
     src/shaders/colored_triangle.frag
     src/shaders/gradient.comp
 )
-
-add_executable(${PROJECT_NAME} 
-	${SOURCES}
-	${HEADERS}
-  ${SHADERS}
+set(SHADER_OUTPUTS
+    ${SHADER_OUTPUT_DIR}/colored_triangle.vert.spv
+    ${SHADER_OUTPUT_DIR}/colored_triangle_mesh.vert.spv
+    ${SHADER_OUTPUT_DIR}/colored_triangle.frag.spv
+    ${SHADER_OUTPUT_DIR}/gradient.spv
 )
+
+foreach(SRC OUT IN ZIP_LISTS SHADER_SOURCES SHADER_OUTPUTS)
+    add_custom_command(
+        OUTPUT  ${OUT}
+        COMMAND ${GLSLC} ${PROJECT_SOURCE_DIR}/${SRC} -o ${OUT}
+        DEPENDS ${PROJECT_SOURCE_DIR}/${SRC}
+        COMMENT "Compiling shader ${SRC}"
+    )
+endforeach()
+
+add_custom_target(compile_shaders ALL DEPENDS ${SHADER_OUTPUTS})
+
+add_executable(${PROJECT_NAME}
+    ${SOURCES}
+    ${HEADERS}
+)
+
+add_dependencies(${PROJECT_NAME} compile_shaders)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     GLM_ENABLE_EXPERIMENTAL
